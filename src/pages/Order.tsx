@@ -59,48 +59,36 @@ export function Order() {
     try {
       setIsSubmitting(true);
 
-      // Prepare files array with metadata
-      const files = [
-        {
-          name: mainFile.name,
-          size: mainFile.size,
-          type: mainFile.type,
-          url: URL.createObjectURL(mainFile) // In real app, upload to S3/cloud storage
-        },
-        ...supportingFiles.map(file => ({
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          url: URL.createObjectURL(file)
-        }))
-      ];
-
       // Create order
-      const order = await createOrder({
+      const response = await createOrder({
         serviceType: selectedService as ServiceType,
-        designName,
-        dimensions: {
+        files: [mainFile, ...supportingFiles],
+        details: {
+          designName,
           width: parseFloat(width),
           height: parseFloat(height),
-          units: units as 'inches' | 'centimeters'
+          units: units as 'inches' | 'centimeters',
+          outputFormat,
+          complexity: complexity as 'simple' | 'medium' | 'complex',
+          turnaroundTime: turnaround as 'standard' | 'rush',
+          quantity: selectedService === 'patches' ? parseInt(quantity) : undefined,
+          backingType: selectedService === 'patches' ? backing : undefined,
+          notes: notes || undefined,
         },
-        outputFormat,
-        complexity: complexity as 'simple' | 'medium' | 'complex',
-        turnaround: turnaround as 'standard' | 'rush',
-        quantity: selectedService === 'patches' ? parseInt(quantity) : undefined,
-        backingType: selectedService === 'patches' ? backing : undefined,
-        specialInstructions: notes || undefined,
         contactInfo: {
           name: contactName,
           email: contactEmail,
           phone: contactPhone || undefined,
-          company: company || undefined
+          company: company || undefined,
         },
-        files
       });
 
-      // Navigate to order detail page
-      navigate(`/account/orders/${order.id}`);
+      if (response.success && response.data) {
+        // Navigate to order detail page
+        navigate(`/account/orders/${response.data.id}`);
+      } else {
+        setError(response.error || 'Failed to submit order');
+      }
     } catch (err) {
       setError('Failed to submit order. Please try again.');
       console.error('Order submission error:', err);
